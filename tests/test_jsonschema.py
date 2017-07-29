@@ -132,6 +132,33 @@ class TestJsonSchema:
 
         assert result['additionalProperties'] == False
 
+    def test_oneof_list(self):
+        result = json_schema(lt.OneOf([lt.String(), lt.Integer()]))
+
+        assert list(result) == ['anyOf']
+        assert result['anyOf'] == [{"type": "string"}, {"type": "integer"}]
+
+    def test_oneof_with_hints(self):
+        MyFoo = namedtuple('MyFoo', ['foo'])
+        MyBar = namedtuple('MyBar', ['bar'])
+
+        FooType = lt.Object({'foo': lt.String()}, constructor=MyFoo)
+        BarType = lt.Object({'bar': lt.Integer()}, constructor=MyBar)
+
+        def object_with_type(name, subject_type):
+            return lt.Object(subject_type, {'type': name},
+                             constructor=subject_type.constructor)
+
+        result = json_schema(lt.OneOf({
+            'Foo': object_with_type('Foo', FooType),
+            'Bar': object_with_type('Bar', BarType),
+        }, dump_hint=lt.type_name_hint, load_hint=lt.dict_value_hint('type')))
+
+        assert list(result) == ['anyOf']
+        assert sorted([
+            list(item['properties']) for item in result['anyOf']
+        ]) == [['bar', 'type'], ['foo', 'type']]
+
     def test_fixed_fields_dict_schema(self):
         result = json_schema(lt.Dict({'foo': lt.String(), 'bar': lt.Integer()}))
 

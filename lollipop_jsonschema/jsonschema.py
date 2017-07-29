@@ -5,10 +5,10 @@ __all__ = [
 
 import lollipop.types as lt
 import lollipop.validators as lv
-from lollipop.utils import identity
+from lollipop.utils import identity, is_mapping
 
 from collections import OrderedDict
-from .compat import iteritems
+from .compat import iteritems, itervalues
 
 
 def find_validators(schema, validator_type):
@@ -138,6 +138,12 @@ def json_schema(schema):
         default = schema.load_default()
         if default:
             js['default'] = schema.inner_type.dump(default)
+    elif isinstance(schema, lt.OneOf):
+        if is_mapping(schema.types):
+            item_types = itervalues(schema.types)
+        else:
+            item_types = schema.types
+        js['anyOf'] = [json_schema(item_type) for item_type in item_types]
     elif hasattr(schema, 'inner_type'):
         js.update(json_schema(schema.inner_type))
 
